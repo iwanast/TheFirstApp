@@ -1,34 +1,145 @@
-* {
-  margin: 0;
+.post-wrapper, .single-post-wrapper {
+  max-width: 1000px;
+  width: 100%;
+  margin: auto;
+  font-size: 0;
   padding: 0;
-  box-sizing: border-box;
-  font-size: 18px;
 }
-@media screen and (max-width: 481px) {
-  * {
-    font-size: 14px;
+.post-wrapper__post, .single-post-wrapper__post {
+  width: calc(25% - 20px);
+  margin: 10px;
+  display: inline-block;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+  font-size: 16px;
+}
+@media screen and (max-width: 1000px) {
+  .post-wrapper__post, .single-post-wrapper__post {
+    width: calc(50% - 20px);
   }
 }
-* p {
-  color: #ffffff;
+@media screen and (max-width: 481px) {
+  .post-wrapper__post, .single-post-wrapper__post {
+    width: 100%;
+    margin: 0;
+  }
 }
-* h1 {
-  color: #ffffff;
-  text-align: center;
-  font-size: 70px;
-  text-shadow: -6px 6px #000000;
+.post-wrapper__post a, .single-post-wrapper__post a {
+  text-decoration: none;
+  color: #000;
 }
-* h2 {
+.post-wrapper__post img, .single-post-wrapper__post img {
+  width: 100%;
+}
+.post-wrapper__content, .single-post-wrapper__content {
+  padding: 10px;
+}
+
+.single-post-wrapper__content button {
+  border-radius: 10px;
+  margin-right: 8px;
+  background-color: #219087;
   color: #ffffff;
 }
 
-body {
-  width: 100vw;
-  height: 100vh;
+h1 {
+  font-size: 35px;
+  font-weight: normal;
+  margin-top: 30px;
 }
-body #main {
-  width: 100vw;
-  height: 100vh;
+@media screen and (max-width: 1079px) {
+  h1 {
+    font-size: 400px;
+    margin-top: 15px;
+  }
+}
+
+nav a {
+  display: block;
+  width: 30px;
+  padding: 8px 16px;
+  background-color: #811ce0;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #ffffff;
+  margin: 8px 16px;
+}
+
+body, html {
+  min-height: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: #f0f0f0;
+  font-family: arial, sans-serif;
+  font-size: 14px;
+}
+
+body.active {
+  background-color: black;
+}
+
+body.active p {
+  background-color: green;
+  color: red;
+}
+
+.active img {
+  display: none;
+}
+
+.active {
+  display: block;
+}
+
+main {
+  padding-top: 50px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 50px;
+}
+
+.max-width {
+  max-width: 1000px;
+  margin: auto;
+}
+
+.text-align-center {
+  text-align: center;
+}
+
+/* Applies to all <h1>...</h1> elements. */
+h1 {
+  font-size: 35px;
+  font-weight: bold;
+  margin-top: 30px;
+  text-align: center;
+}
+
+img {
+  width: 100%;
+}
+
+p {
+  line-height: 2em;
+}
+
+/* Applies to all elements with <... class="active"> specified. */
+.active {
+  color: white;
+}
+
+#change-age-button {
+  padding: 8px 16px;
+  display: block;
+  width: 250px;
+  margin: auto;
+  border-radius: 10px;
+  background-color: #1b9bbb;
+  color: #ffffff;
 }
 
 /*# sourceMappingURL=style.css.map */

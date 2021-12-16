@@ -1,508 +1,239 @@
-// Imports firebase functions
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-} from "https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore.js";
 
-// Imports Firebase configuration settings
-const firebaseConfig = {
-  apiKey: "AIzaSyBAjhZsNJ7urNqtWrUTam_f8_qiVdO3lhc",
-  authDomain: "marvel-quiz-616.firebaseapp.com",
-  projectId: "marvel-quiz-616",
-  storageBucket: "marvel-quiz-616.appspot.com",
-  messagingSenderId: "987419001414",
-  appId: "1:987419001414:web:e2c1132f189ba86b040047",
-};
+let innerMain = document.getElementById("main").innerHTML;  
+let ageButton = document.getElementById("change-age-button");
+let wrapperPrograms = document.getElementById("posts-summaries");
+let wrapperEpisodes = document.getElementById("episodes-summaries")
+let listenButtons = document.getElementsByClassName("listen-button");
+let auditivSignal;
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Declare global variables
-let easyQuestionsArray = [];
-let hardQuestionsArray = [];
-let easyAvg = {
-  scores: 0,
-  users: 0,
-};
-let hardAvg = {
-  scores: 0,
-  users: 0,
-};
-let currentDifficulty = "";
-let questionCounter = 0;
-let correctAnswers = 0;
-let correctAnswerString = ""; // in here we store the correct answer for the momentarily question
-let randomizedAnswersArray = []; // in here we store the randomized answers for the momentarily question
-let userAnswerIndex; // index of the answer the user selected from 0 till 3
-let videoPlayed = false;
-let video = document.querySelector(".video");
-const answerButtons = document.getElementsByClassName("answer-buttons");
-const backgrSize = `12px, 100%`;
-
-////////////////////////////////////GLOBAL FUNCTIONS///////////////////////////////////////
-
-// function to put a function after onclick
-function putInOnclick(idHtml, theFunction) {
-  return (document.getElementById(idHtml).onclick = theFunction);
+async function doAjaxThings(url) {
+  // await code here
+  let result = await makeRequest("GET", url);
+    // code below here will only execute when await makeRequest() finished loading
+    console.log(result);
+  return result; 
 }
 
-// Toggle a class for an id in html
-function toggleClass(theId, theClass){
-  document.getElementById(theId).classList.toggle(theClass);
-}
+//Loading the programes for age 3-8 when starting the page
+//populatePosts("http://api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
 
-// Randomize array in-place using Durstenfeld shuffle algorithm
-function shuffleArray(array) {
-  for (var i = array.length - 1; i > 0; i--) {
-    var j = Math.floor(Math.random() * (i + 1));
-    var temp = array[i];
-    array[i] = array[j];
-    array[j] = temp;
+// Change the programes for the range 3-8 or 9-13 on display and the buttoncolor and -text
+if(ageButton){
+ageButton.onclick = function(event){
+  if (parseInt(event.target.getAttribute("data-lowestAge")) === 3){
+    wrapperPrograms.innerHTML = "";
+    populatePosts("http://api.sr.se/api/v2/programs/index?programcategoryid=132&pagination=false&format=json")
+    ageButton.innerHTML = "Display the programes for age 3-8"; 
+    ageButton.setAttribute("data-lowestAge", "9");
+    ageButton.style.background = "#bf10e2";
+  }else{
+    wrapperPrograms.innerHTML = "";
+    populatePosts("http://api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
+    ageButton.innerHTML = "Display the programes for age 9-13"; 
+    ageButton.setAttribute("data-lowestAge", "3")
+    ageButton.style.background = "#1b9bbb";
   }
-  return array;
+}
 }
 
-// Inserts value inte the innerHTML on the DOM by id
-function insertHTML(htmlId, htmlValue) {
-  document.getElementById(`${htmlId}`).innerHTML = htmlValue;
+
+async function populatePosts(url){
+  let result = await doAjaxThings(url)
+  result = JSON.parse(result);
+  for(let i = 0; i < result.programs.length; i++){
+    createPost(result.programs[i]);
+  }
 }
 
-////////////////////////////////////LANDING PAGE//////////////////////////////////////////
+// When the page loads all the episodes-posts will be created 
+if(document.getElementById("body-single-post")){
+  populateSinglePost();
+}
 
-//Pause landing page video as static image on last frame
-video.addEventListener("ended", function() {
-    pauseVideo();
-    videoPlayed = true;
+// Depending if there are episodes and if pods or broadcasts, the different functions are called to show them on the page
+async function populateSinglePost(){
+  let id = JSON.parse(findQuery("id"));
+  let url = `http://api.sr.se/api/v2/episodes/index?programid=${id}&audioquality=hi&pagination=false&format=json`;
+  let result = await doAjaxThings(url)
+  result = JSON.parse(result);
+  if(!result.episodes[0]){
+    alert("There are no episodes")
+  }else if(result.episodes[0].listenpodfile){
+    setMainTitle("Pods for this program", "maintitle-episodes");
+    for(let i = result.episodes.length - 1; i >= 0; i--){
+      if(result.episodes[i].listenpodfile){
+        createPodEpisodes(result.episodes[i]);
+      } 
+    }
+  }else if(result.episodes[0].broadcast){
+    setMainTitle("Broadcasts for this program from the last month", "maintitle-episodes")
+    for(let i = result.episodes.length - 1; i >= 0; i--){
+      if(result.episodes[i].broadcast){
+        createBroadcastEpisodes(result.episodes[i]);
+      }
+    }
+  }else{
+    alert("There are no broadcasts or pods for this program")
+    return
+  }
+  setListenButtons();
+  //setPauseButtons();
+}
+
+function findQuery(param) {
+  var urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(param);
+}
+
+// Getting the data from the API
+function makeRequest(method, url) {
+  return new Promise(function (resolve, reject) {
+      let xhr = new XMLHttpRequest();
+      xhr.open(method, url);
+      xhr.onload = function () {
+          if (this.status >= 1) {
+              resolve(xhr.response);
+          } else {
+              reject({
+                  status: this.status,
+                  statusText: xhr.statusText
+              });
+          }
+      };
+      xhr.onerror = function () {
+          reject({
+              status: this.status,
+              statusText: xhr.statusText
+          });
+      };
+      xhr.send();
   });
-
-setTimeout(function() {
-  document.querySelector(".landing-btn-div").style.pointerEvents = "auto";
-  document.querySelector(".landing-btn-div--alternate").style.pointerEvents = "auto";
-}, 0);
-
-//Hide the landing page overlay and start the game when the easy or hard button is clicked
-document.getElementById("easy-btn").addEventListener("click", function() {
-  currentDifficulty = "easy";
-  shuffleArray(easyQuestionsArray);
-  startGame();
-});
-
-document.getElementById("hard-btn").addEventListener("click", function() {
-  currentDifficulty = "hard";
-  shuffleArray(hardQuestionsArray);
-  startGame();
-});
-
-function pauseVideo() {
-  //Pause the video
-  video.pause();
-  //Set play time to the last frame
-  video.currentTime = video.duration - 1;
-  //Set variable to tell page video has been played
-  videoPlayed = true;
 }
 
-//Onclick event for skip intro button
-document.getElementById("skip-intro-btn").addEventListener("click", function () {
-  skipIntro();
-});
-
-function skipIntro() {
-  pauseVideo();
-  //Make buttons clickable
-  document.querySelector(".landing-btn-div").style.pointerEvents = "auto";
-  document.querySelector(".landing-btn-div--alternate").style.pointerEvents = "auto";
-  //Show buttons
-  document.querySelectorAll('.fade-in')[0].style.opacity = "1";
-  document.querySelectorAll('.fade-in')[1].style.opacity = "1";
-  //Remove skip video button
-  document.getElementById("skip-intro-btn").style.display = "none";
+function createPost(programData) {
+  if(!programData) return null; 
+  if(programData.hasondemand || programData.haspod)
+  wrapperPrograms.innerHTML += `<li class="post-wrapper__post"><a href="./pages/episodes.html?id=${programData.id}">
+    <img src="${programData.programimage}" alt="Radioprograms image" />
+    <div class="post-wrapper__content">
+     <span>${programData.programcategory.name}</span>
+     <h3>${programData.name}</h3>
+     <p>
+      ${programData.description}
+     </p>
+    </div>
+    </a>
+   </li>`;
 }
 
-//Called onclick difficulty
-function startGame() {
-  questionCounter = 0;
-  correctAnswers = 0;
-  retrieveAvgDataFromFirebase();
-  toggleClass("landing-page", "hidden-overlay");
-  //Checks if video has been played and prevents it from playing again if it has
-  if (videoPlayed == true) {
-    pauseVideo();
+function createPodEpisodes(podEpisodeData){
+if(!podEpisodeData) return null; 
+    let audioType = declareAudioTypeFromFileEnding(podEpisodeData.listenpodfile.url);
+  wrapperEpisodes.innerHTML += `<li class="single-post-wrapper__post">
+    <audio id="myAudio${podEpisodeData.id}">
+      <source src="${podEpisodeData.listenpodfile.url}" type="audio/${audioType}">
+      Your browser does not support the audio element.
+    </audio>
+    <img src="${podEpisodeData.imageurl}" alt="Radioprograms image" />
+    <div class="single-post-wrapper__content">
+     <span>${podEpisodeData.listenpodfile.program.name}</span>
+     <h3>${podEpisodeData.listenpodfile.title}</h3>
+     <p>
+      ${podEpisodeData.description}
+     </p>
+     <button class="listen-button" type="button" data-id="${podEpisodeData.id}" data-actionSound="play" >Play</button> 
+      <button class="listen-button" type="button" data-id="${podEpisodeData.id}" data-actionSound="pause">Pause</button>
+    </div>
+   </li>`; 
+}
+
+function createBroadcastEpisodes(ondemandEpisodData){
+  if(!ondemandEpisodData) return null; 
+  console.log(ondemandEpisodData.broadcast.broadcastfiles[0].url)
+  let audioType = declareAudioTypeFromFileEnding(ondemandEpisodData.broadcast.broadcastfiles[0].url);
+wrapperEpisodes.innerHTML += `<li class="single-post-wrapper__post">
+  <audio id="myAudio${ondemandEpisodData.id}">
+    <source src="${ondemandEpisodData.broadcast.broadcastfiles[0].url}" type="audio/${audioType}">
+    Your browser does not support the audio element.
+  </audio>
+  <img src="${ondemandEpisodData.imageurl}" alt="Radioprograms image" />
+  <div class="single-post-wrapper__content">
+   <span>${ondemandEpisodData.program.name}</span>
+   <h3>${ondemandEpisodData.title}</h3>
+   <p>
+    ${ondemandEpisodData.description}
+   </p>
+   <button class="listen-button" type="button" data-id="${ondemandEpisodData.id}" data-actionSound="play" >Play</button> 
+    <button class="listen-button" type="button" data-id="${ondemandEpisodData.id}" data-actionSound="pause">Pause</button>
+  </div>
+ </li>`; 
+}
+
+function setMainTitle(title, htmlId){
+document.getElementById(htmlId).innerHTML = title; 
+}
+
+function declareAudioTypeFromFileEnding(audioFile){
+  let audioFileType = audioFile.substr(audioFile.length - 3);
+  if(audioFileType === "mp3"){
+    audioFileType = "mpeg";
+  }else if(audioFileType === "oga"){
+    audioFileType = "ogg";
+  }else if(audioFileType === "m4a")
+    audioFileType = "mp4"
+  return audioFileType;
+}
+
+/////////////////////AUDIO//////////////////////////
+
+function play(){
+let source = document.getElementById("source")
+source.setAttribute("src", "./assets/gameOverMan.wav") //.appendTo("myAudio");
+source.setAttribute("type", "audio/wav") // .appendTo(source.parent());
+let auditivSignal = document.getElementById("myAudio");
+auditivSignal.load(); 
+}
+if(document.getElementById("play-button") || document.getElementById("pause-button")){
+document.getElementById("play-button").onclick = ()=> playAudio();
+document.getElementById("pause-button").onclick = ()=> pauseAudio();
+//document.getElementById("play-button").onclick = function() {auditivSignal.play();}
+}
+
+// let playButton = document.getElementsByClassName("play-button");
+// if(playButton){
+//   playButton.onclick = function(event){
+//     console.log("ich komme in den playbutton")
+//     let episodeId = parseInt(event.target.getAttribute("data-id"));
+//     let auditivSignal = document.getElementById(`myAudio${episodeId}`);
+//     auditivSignal.load();
+//     auditivSignal.play();
+//   }
+// }
+
+function setListenButtons(){
+  for (var i = 0; i < listenButtons.length; i++) {
+    listenButtons[i].addEventListener('click', listenEpisode);
   }
-  document.getElementById("next-button").innerHTML = "next";
-  goToNextQuestion();
 }
 
-////////////////////////////////////GAME PAGE//////////////////////////////////////////
+// function setPauseButtons(){
+//   for (var i = 0; i < pauseButtons.length; i++) {
+//     pauseButtons[i].addEventListener('click', listenEpisode);
+//   }
+// }
 
-// Set onclick on the next-button to trigger the next question or the finishGame-function
-document.getElementById("button-next").onclick = function(event) {
-  goToNextQuestion();
-  event.stopPropagation();
-}
-
-function goToNextQuestion() {
-  toggleClass("button-next", "hidden-class-button"); // hide the next-button until an answer is clicked
+// When the button play or pause is clicked its playing or pausing the actual sound
+function listenEpisode(event){
+  console.log("ich komme zu listenEpisode")
+  let episodeId = parseInt(event.target.getAttribute("data-id"));
   
-  // //Set the answerbuttons onclick to a function again
-  for (let i = 0; i < answerButtons.length; i++) {
-    answerButtons[i].addEventListener("click", whenClickedOnAnswer); 
-  }
-  
-  // Set the background-color of the buttons to none again
-  for (let i = 1; i <= 4; i++) {
-    document.getElementById(`answer${i}`).style.background = "";
-  }
-
-  randomizedAnswersArray = []; //Clear the array with the four answers
-
-  // Decide if there should be a new question or not and call the different functions
-  if (questionCounter < 10) {
-    if (questionCounter == 9) {
-      document.getElementById("next-button").innerHTML = "submit";
-    }
-    showNewQuestion();
-  } else if (questionCounter == 10) {
-    finishGame();
-    toggleClass("button-next", "hidden-class-button");
-    return;
-  }
-  questionCounter++;
-}
-
-function showNewQuestion(){
-  if (currentDifficulty == "easy") {
-    correctAnswerString = easyQuestionsArray[questionCounter].answers[0];
-    insertHTML("question", easyQuestionsArray[questionCounter].question);
-    document.getElementById("game-picture").src = `${easyQuestionsArray[questionCounter].image}.jpg`;
-    randomizeAnswers(easyQuestionsArray[questionCounter].answers);
-  } else {
-    correctAnswerString = hardQuestionsArray[questionCounter].answers[0];
-    insertHTML("question", hardQuestionsArray[questionCounter].question);
-    document.getElementById("game-picture").src = `${hardQuestionsArray[questionCounter].image}.jpg`;
-    randomizeAnswers(hardQuestionsArray[questionCounter].answers);
-  }
-  //Inserts created random array of answers into the four answer divs
-  for (let i = 0; i < randomizedAnswersArray.length; i++) {
-    insertHTML(`answer${i + 1}`, randomizedAnswersArray[i]);
-  }
-}  
-
-// shuffles the array of answers and putting it in the randomizedAnswersArray
-function randomizeAnswers(array) {
-  for (var a of array){
-    randomizedAnswersArray.push(a);;
-  }
-  shuffleArray(randomizedAnswersArray);
-}
-
-function answerButtonNotClickable() {
-  for (let i = 0; i < answerButtons.length; i++) {
-    answerButtons[i].removeEventListener("click", whenClickedOnAnswer); 
-  }
-}
-
-function whenClickedOnAnswer(event) {
-  userAnswerIndex = parseInt(event.target.getAttribute("data-userAnswerIndex")); // index of the answer
-  hightlightAndCountingAnswer();
-  event.stopPropagation();
-}
-
-// this function is hightlighting the correct answer green and
-// if the user clicked wrong, the wrong one red
-// this function adds the correctAnswers variable (for calculating the user score)
-function hightlightAndCountingAnswer() {
-  answerButtonNotClickable(); //Disable the answers to be clickable
-  toggleClass("button-next", "hidden-class-button"); // Enable the next-button to work again
-
-  // hightlight the correct answer green and the rest white (so no hover anymore) and adds 1 to correctAnswer
-  for (let i = 0; i < 4; i++) {
-    if (correctAnswerString == randomizedAnswersArray[i]) {
-      let backgrGreen = `url('data:image/svg+xml;utf8,<svg width="100" height="100" transform="rotate(25)" opacity="0.1" version="1.1" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g  fill="%23250E17"><circle cx="25" cy="25" r="12.5"/><circle cx="75" cy="75" r="12.5"/><circle cx="75" cy="25" r="12.5"/><circle cx="25" cy="75" r="12.5"/></g></svg>'),
-      #35db35`;
-      document.getElementById(`answer${i + 1}`).style.background = backgrGreen;
-      document.getElementById(`answer${i + 1}`).style.backgroundSize = backgrSize;   
-      correctAnswers++;
-    } else {
-        let backgrWhite = `url('data:image/svg+xml;utf8,<svg width="100" height="100" transform="rotate(25)" opacity="0.1" version="1.1" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g  fill="%23250E17"><circle cx="25" cy="25" r="12.5"/><circle cx="75" cy="75" r="12.5"/><circle cx="75" cy="25" r="12.5"/><circle cx="25" cy="75" r="12.5"/></g></svg>'),
-        #ffffff`;
-        document.getElementById(`answer${i + 1}`).style.background = backgrWhite;
-        document.getElementById(`answer${i + 1}`).style.backgroundSize = backgrSize;
-    }
-  }
-  // if the user clicked the wrong answer, it will become red and the variable correctAnswer will get -1
-  if (correctAnswerString != randomizedAnswersArray[userAnswerIndex]) {
-    let backgrRed = `url('data:image/svg+xml;utf8,<svg width="100" height="100" transform="rotate(25)" opacity="0.1" version="1.1" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g  fill="123250E17"><circle cx="25" cy="25" r="12.5"/><circle cx="75" cy="75" r="12.5"/><circle cx="75" cy="25" r="12.5"/><circle cx="25" cy="75" r="12.5"/></g></svg>'),
-    #ed1d23`;
-    document.getElementById(`answer${userAnswerIndex + 1}`).style.background = backgrRed;
-    document.getElementById(`answer${userAnswerIndex + 1}`).style.backgroundSize = backgrSize;   
-    correctAnswers--;
-  }
-}
-
-////////////////////////////////////SCORE PAGE//////////////////////////////////////////
-
-//PULLED BY SCORE PAGE//
-function calculateAvg() {
-  let avg = 0;
-  if (currentDifficulty == "easy") {
-    easyAvg.scores = easyAvg.scores + correctAnswers;
-    easyAvg.users++;
-    avg = (easyAvg.scores / easyAvg.users).toFixed(1);
-  } else if (currentDifficulty == "hard") {
-      hardAvg.scores = hardAvg.scores + correctAnswers;
-      hardAvg.users++;
-      avg = (hardAvg.scores / hardAvg.users).toFixed(1);
-  } else {
-      console.log("No difficulty set");
-  }
-  displayScores(avg);
-  saveAvgDataToFirebase();
-}
-
-function displayScores(avg) {
-  document.getElementById("display-Score").innerHTML = correctAnswers + "/10";
-  document.getElementById("display-AvgScore").innerHTML = avg + " /10";
-}
-
-function finishGame() {
-  toggleClass("score-page", "hidden-overlay");
-  displayScoreExtras(currentDifficulty, correctAnswers);
-  calculateAvg();
-}
-
-let displayEasyGif = [
-  "../gifs/0Easy.gif",
-  "../gifs/1Easy.gif",
-  "../gifs/2Easy.gif",
-  "../gifs/3Easy.gif",
-  "../gifs/4Easy.gif",
-  "../gifs/5Easy.gif",
-  "../gifs/6Easy.gif",
-  "../gifs/7Easy.gif",
-  "../gifs/8Easy.gif",
-  "../gifs/9Easy.gif",
-  "../gifs/10Easy.gif",
-];
-
-let displayHardGif = [
-  "../gifs/0Hard.gif",
-  "../gifs/1Hard.gif",
-  "../gifs/2Hard.gif",
-  "../gifs/3Hard.gif",
-  "../gifs/4Hard.gif",
-  "../gifs/5Hard.gif",
-  "../gifs/6Hard.gif",
-  "../gifs/7Hard.gif",
-  "../gifs/8Hard.gif",
-  "../gifs/9Hard.gif",
-  "../gifs/10Hard.gif",
-];
-
-let displayEasyGifText = [
-  "Puny god...",
-  "You just peed in the suit...",
-  "What a bunch of A-holes.",
-  "I think it's gratuitous, but whatever.",
-  "Reality is often disappointing.",
-  "Boom. You looking for this?",
-  "You know, they told me you people were conceited douchebags, but that isn't true at all!",
-  "I got something kind of big, but I can't hold it for long!",
-  "You don't get to make that choice for me.",
-  "You guys know I can move things with my mind, right?",
-  "Higher, further, faster baby."
-];
-
-let displayHardGifText = [
-  "Whose kitty litter did I just shit in?",
-  "You're unworthy of your title. I cast you out!",
-  "If you throw one more moon at me, I'm gonna lose it!",
-  "Do you guys put the word quantum in front of everything?",
-  "Forget everything you think you know.",
-  "Just because something works, doesn't mean it can't be improved.",
-  "Kill mode, activate!",
-  "I can do this all day!",
-  "Do I look to be in a gaming mood?!",
-  "I love you 3000.",
-  "This does put a smile on my face."
-];
-
-function displayScoreExtras(currentDifficulty, correctAnswers) {
-  //DISPLAY scoreGif and scoreText in innerHTML depending on number of correctAnswers
-  let gifLink = "";
-  let gifText = "";
-  if (currentDifficulty == "easy" && correctAnswers == 10) {
-    gifLink = displayEasyGif[10]; 
-    gifText = displayEasyGifText[10]
-  } else if (currentDifficulty == "easy" && correctAnswers == 9) {
-      gifLink = displayEasyGif[9]; 
-      gifText = displayEasyGifText[9]
-  } else if (currentDifficulty == "easy" && correctAnswers == 8) {
-      gifLink = displayEasyGif[8]; 
-      gifText = displayEasyGifText[8]
-  } else if (currentDifficulty == "easy" && correctAnswers == 7) {
-      gifLink = displayEasyGif[7]; 
-      gifText = displayEasyGifText[7]
-  } else if (currentDifficulty == "easy" && correctAnswers == 6) {
-      gifLink = displayEasyGif[6]; 
-      gifText = displayEasyGifText[6]
-  } else if (currentDifficulty == "easy" && correctAnswers == 5) {
-      gifLink = displayEasyGif[5]; 
-      gifText = displayEasyGifText[5]
-  } else if (currentDifficulty == "easy" && correctAnswers == 4) {
-      gifLink = displayEasyGif[4]; 
-      gifText = displayEasyGifText[4]
-  } else if (currentDifficulty == "easy" && correctAnswers == 3) {
-      gifLink = displayEasyGif[3]; 
-      gifText = displayEasyGifText[3]
-  } else if (currentDifficulty == "easy" && correctAnswers == 2) {
-      gifLink = displayEasyGif[2]; 
-      gifText = displayEasyGifText[2]
-  } else if (currentDifficulty == "easy" && correctAnswers == 1) {
-      gifLink = displayEasyGif[1]; 
-      gifText = displayEasyGifText[1]
-  } else if (currentDifficulty == "easy" && correctAnswers == 0) {
-      gifLink = displayEasyGif[0]; 
-      gifText = displayEasyGifText[0]
+  if(auditivSignal != document.getElementById(`myAudio${episodeId}`)){
+    auditivSignal = document.getElementById(`myAudio${episodeId}`);
+    auditivSignal.load();
   } 
-  if (currentDifficulty == "hard" && correctAnswers == 10) {
-    gifLink = displayHardGif[10]; 
-    gifText = displayHardGifText[10]
-  } else if (currentDifficulty == "hard" && correctAnswers == 9) {
-      gifLink = displayHardGif[9]; 
-      gifText = displayHardGifText[9]
-  } else if (currentDifficulty == "hard" && correctAnswers == 8) {
-      gifLink = displayHardGif[8]; 
-      gifText = displayHardGifText[8]
-  } else if (currentDifficulty == "hard" && correctAnswers == 7) {
-      gifLink = displayHardGif[7]; 
-      gifText = displayHardGifText[7]
-  } else if (currentDifficulty == "hard" && correctAnswers == 6) {
-      gifLink = displayHardGif[6]; 
-      gifText = displayHardGifText[6]
-  } else if (currentDifficulty == "hard" && correctAnswers == 5) {
-      gifLink = displayHardGif[5]; 
-      gifText = displayHardGifText[5]
-  } else if (currentDifficulty == "hard" && correctAnswers == 4) {
-      gifLink = displayHardGif[4]; 
-      gifText = displayHardGifText[4]
-  } else if (currentDifficulty == "hard" && correctAnswers == 3) {
-      gifLink = displayHardGif[3]; 
-      gifText = displayHardGifText[3]
-  } else if (currentDifficulty == "hard" && correctAnswers == 2) {
-      gifLink = displayHardGif[2]; 
-      gifText = displayHardGifText[2]
-  } else if (currentDifficulty == "hard" && correctAnswers == 1) {
-      gifLink = displayHardGif[1]; 
-      gifText = displayHardGifText[1]
-  } else if (currentDifficulty == "hard" && correctAnswers == 0) {
-      gifLink = displayHardGif[0]; 
-      gifText = displayHardGifText[0]
-  }
-  document.getElementById("gif-source").src = gifLink;
-  document.getElementById("gif-txt").innerHTML = gifText;                                      
-}
-
-//toggle landing page in after user wants to play again
-document.getElementById("play-again-button").onclick = function(){
-  toggleClass("score-page", "hidden-overlay");
-  toggleClass("landing-page", "hidden-overlay");
-}
-
-
-///////////////////////////////FIREBASE FUNCTIONS////////////////////////////////////
-
-document.getElementById("bodyId").onload = retrieveQuestionDataFromFirebase();
-
-//Retrieve the questions/answers/imagesrc from Firebase
-async function retrieveQuestionDataFromFirebase() {
-  let easyQuestionsData = await retrieveQuestionDocs("easy");
-  let hardQuestionsData = await retrieveQuestionDocs("hard");
-  populateEasyQuestionsArray(easyQuestionsData);
-  populateHardQuestionsArray(hardQuestionsData);
-}
-
-async function retrieveAvgDataFromFirebase() {
-  let easyAvgData = await retrieveAvgDocs("easy");
-  let hardAvgData = await retrieveAvgDocs("hard");
-
-  populateAvgVariables(easyAvgData, hardAvgData);
-}
-
-//Retrieve each of the difficulty databases
-async function retrieveQuestionDocs(diff) {
-  let coll = diff + "-questions";
-  const questions = await getDocs(collection(db, coll));
-  return questions;
-}
-
-//Retrieve each of the avg databases
-async function retrieveAvgDocs(diff) {
-  let coll = diff + "-avg";
-  const avg = await getDocs(collection(db, coll));
-  return avg;
-}
-
-//Insert each of the docs into the easyQuestionsArray
-function populateEasyQuestionsArray(db) {
-  let i = 0;
-  db.forEach((doc) => {
-    let question = {
-      question: doc.data().question,
-      image: doc.data().image,
-      answers: doc.data().answers,
-    };
-    easyQuestionsArray[i] = question;
-    i++;
-  });
-}
-
-//Insert each of the docs into the hardQuestionsArray
-function populateHardQuestionsArray(db) {
-  let i = 0;
-  db.forEach((doc) => {
-    let question = {
-      question: doc.data().question,
-      image: doc.data().image,
-      answers: doc.data().answers,
-    };
-    hardQuestionsArray[i] = question;
-    i++;
-  });
-}
-
-//Populate the avg global variables with data from firebase
-function populateAvgVariables(easyDb, hardDb) {
-  easyDb.forEach((doc) => {
-    easyAvg = {
-      scores: doc.data().scores,
-      users: doc.data().users,
-    };
-  });
-
-  hardDb.forEach((doc) => {
-    hardAvg = {
-      scores: doc.data().scores,
-      users: doc.data().users,
-    };
-  });
-}
-
-function saveAvgDataToFirebase() {
-  if (currentDifficulty == "easy") {
-    setDoc(doc(db, "easy-avg", "eavg"), {
-      scores: easyAvg.scores,
-      users: easyAvg.users,
-    });
-  } else if (currentDifficulty == "hard") {
-    setDoc(doc(db, "hard-avg", "havg"), {
-      scores: hardAvg.scores,
-      users: hardAvg.users,
-    });
-  }
+  if(event.target.getAttribute("data-actionSound") === "play")
+    auditivSignal.play();
+  if(event.target.getAttribute("data-actionSound") === "pause")
+    auditivSignal.pause();
+  event.stopPropagation();
 }
