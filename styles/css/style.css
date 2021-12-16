@@ -43,6 +43,11 @@
   color: #ffffff;
 }
 
+#more-episodes {
+  text-align: center;
+  font-size: 16px;
+}
+
 h1 {
   font-size: 35px;
   font-weight: normal;
@@ -78,23 +83,6 @@ body {
   font-size: 14px;
 }
 
-body.active {
-  background-color: black;
-}
-
-body.active p {
-  background-color: green;
-  color: red;
-}
-
-.active img {
-  display: none;
-}
-
-.active {
-  display: block;
-}
-
 main {
   padding-top: 50px;
   padding-left: 10px;
@@ -125,10 +113,6 @@ img {
 
 p {
   line-height: 2em;
-}
-
-.active {
-  color: white;
 }
 
 #change-age-button {
