@@ -1,4 +1,3 @@
-
 let innerMain = document.getElementById("main").innerHTML;  
 let ageButton = document.getElementById("change-age-button");
 let wrapperPrograms = document.getElementById("posts-summaries");
@@ -6,29 +5,27 @@ let wrapperEpisodes = document.getElementById("episodes-summaries")
 let listenButtons = document.getElementsByClassName("listen-button");
 let auditivSignal;
 
-async function doAjaxThings(url) {
-  // await code here
+// Start to get data from the API
+async function startRequestAPI(url) {
   let result = await makeRequest("GET", url);
-    // code below here will only execute when await makeRequest() finished loading
-    console.log(result);
   return result; 
 }
 
 //Loading the programes for age 3-8 when starting the page
-//populatePosts("http://api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
+//populatePostsWithPrograms("http://api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
 
 // Change the programes for the range 3-8 or 9-13 on display and the buttoncolor and -text
 if(ageButton){
 ageButton.onclick = function(event){
   if (parseInt(event.target.getAttribute("data-lowestAge")) === 3){
     wrapperPrograms.innerHTML = "";
-    populatePosts("http://api.sr.se/api/v2/programs/index?programcategoryid=132&pagination=false&format=json")
+    populatePostsWithPrograms("http://api.sr.se/api/v2/programs/index?programcategoryid=132&pagination=false&format=json")
     ageButton.innerHTML = "Display the programes for age 3-8"; 
     ageButton.setAttribute("data-lowestAge", "9");
     ageButton.style.background = "#bf10e2";
   }else{
     wrapperPrograms.innerHTML = "";
-    populatePosts("http://api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
+    populatePostsWithPrograms("http://api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
     ageButton.innerHTML = "Display the programes for age 9-13"; 
     ageButton.setAttribute("data-lowestAge", "3")
     ageButton.style.background = "#1b9bbb";
@@ -37,24 +34,24 @@ ageButton.onclick = function(event){
 }
 
 
-async function populatePosts(url){
-  let result = await doAjaxThings(url)
+async function populatePostsWithPrograms(url){
+  let result = await startRequestAPI(url)
   result = JSON.parse(result);
   for(let i = 0; i < result.programs.length; i++){
-    createPost(result.programs[i]);
+    createPostProgram(result.programs[i]);
   }
 }
 
 // When the page loads all the episodes-posts will be created 
 if(document.getElementById("body-single-post")){
-  populateSinglePost();
+  populatePostsWithEpisodes();
 }
 
 // Depending if there are episodes and if pods or broadcasts, the different functions are called to show them on the page
-async function populateSinglePost(){
+async function populatePostsWithEpisodes(){
   let id = JSON.parse(findQuery("id"));
   let url = `http://api.sr.se/api/v2/episodes/index?programid=${id}&audioquality=hi&pagination=false&format=json`;
-  let result = await doAjaxThings(url)
+  let result = await startRequestAPI(url)
   result = JSON.parse(result);
   if(!result.episodes[0]){
     alert("There are no episodes")
@@ -77,7 +74,6 @@ async function populateSinglePost(){
     return
   }
   setListenButtons();
-  //setPauseButtons();
 }
 
 function findQuery(param) {
@@ -110,7 +106,7 @@ function makeRequest(method, url) {
   });
 }
 
-function createPost(programData) {
+function createPostProgram(programData) {
   if(!programData) return null; 
   if(programData.hasondemand || programData.haspod)
   wrapperPrograms.innerHTML += `<li class="post-wrapper__post"><a href="./pages/episodes.html?id=${programData.id}">
@@ -173,6 +169,8 @@ function setMainTitle(title, htmlId){
 document.getElementById(htmlId).innerHTML = title; 
 }
 
+/////////////////////AUDIO//////////////////////////
+
 function declareAudioTypeFromFileEnding(audioFile){
   let audioFileType = audioFile.substr(audioFile.length - 3);
   if(audioFileType === "mp3"){
@@ -184,45 +182,14 @@ function declareAudioTypeFromFileEnding(audioFile){
   return audioFileType;
 }
 
-/////////////////////AUDIO//////////////////////////
-
-function play(){
-let source = document.getElementById("source")
-source.setAttribute("src", "./assets/gameOverMan.wav") //.appendTo("myAudio");
-source.setAttribute("type", "audio/wav") // .appendTo(source.parent());
-let auditivSignal = document.getElementById("myAudio");
-auditivSignal.load(); 
-}
-if(document.getElementById("play-button") || document.getElementById("pause-button")){
-document.getElementById("play-button").onclick = ()=> playAudio();
-document.getElementById("pause-button").onclick = ()=> pauseAudio();
-//document.getElementById("play-button").onclick = function() {auditivSignal.play();}
-}
-
-// let playButton = document.getElementsByClassName("play-button");
-// if(playButton){
-//   playButton.onclick = function(event){
-//     console.log("ich komme in den playbutton")
-//     let episodeId = parseInt(event.target.getAttribute("data-id"));
-//     let auditivSignal = document.getElementById(`myAudio${episodeId}`);
-//     auditivSignal.load();
-//     auditivSignal.play();
-//   }
-// }
-
+//Setting an eventListener to the play and pause buttons
 function setListenButtons(){
   for (var i = 0; i < listenButtons.length; i++) {
     listenButtons[i].addEventListener('click', listenEpisode);
   }
 }
 
-// function setPauseButtons(){
-//   for (var i = 0; i < pauseButtons.length; i++) {
-//     pauseButtons[i].addEventListener('click', listenEpisode);
-//   }
-// }
-
-// When the button play or pause is clicked its playing or pausing the actual sound
+// When the button play or pause is clicked its playing or pausing the pod/broadcast
 function listenEpisode(event){
   console.log("ich komme zu listenEpisode")
   let episodeId = parseInt(event.target.getAttribute("data-id"));
@@ -237,3 +204,14 @@ function listenEpisode(event){
     auditivSignal.pause();
   event.stopPropagation();
 }
+
+///////////////////////////////TODO AND SUGGESTED IMPROVEMENTS//////////////////////////
+/*
+- clean bug: episodes with more than 168 or 243 are not loading more episodes
+  -> laoding only 100 and then have another page with other 100 in a next-button?
+- set icon for play and pause
+- when going back to main from episodes, make it back to the same program as before
+  ->loading the page again with the same age-category-programs 
+  ->scrolling down to the right program as before
+- when listened to an episode make it change color or something to show its already listened
+*/

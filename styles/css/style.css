@@ -127,7 +127,6 @@ p {
   line-height: 2em;
 }
 
-/* Applies to all elements with <... class="active"> specified. */
 .active {
   color: white;
 }
