@@ -1,42 +1,18 @@
 let innerMain = document.getElementById("main").innerHTML;  
-let ageButton = document.getElementById("change-age-button");
-let wrapperPrograms = document.getElementById("posts-summaries");
-let wrapperEpisodes = document.getElementById("episodes-summaries")
-let listenButtons = document.getElementsByClassName("listen-button");
-let bodyEpisodes = document.getElementById("body-episodes");
-let bodyPrograms = document.getElementById("body-programs");
-let moreEpisodes = document.getElementById("more-episodes")
+const ageButton = document.getElementById("change-age-button");
+const wrapperPrograms = document.getElementById("posts-summaries");
+const wrapperEpisodes = document.getElementById("episodes-summaries")
+const listenButtons = document.getElementsByClassName("listen-button");
+const bodyEpisodes = document.getElementById("body-episodes");
+const bodyPrograms = document.getElementById("body-programs");
+const moreEpisodes = document.getElementById("more-episodes")
 let auditivSignal;
 
-// Start to get data from the API
-async function startRequestAPI(url) {
-  let result = await makeRequest("GET", url);
-  return result; 
-}
 
-// Getting the data from the API
-function makeRequest(method, url) {
-  return new Promise(function (resolve, reject) {
-      let xhr = new XMLHttpRequest();
-      xhr.open(method, url);
-      xhr.onload = function () {
-          if (this.status >= 1) {
-              resolve(xhr.response);
-          } else {
-              reject({
-                  status: this.status,
-                  statusText: xhr.statusText
-              });
-          }
-      };
-      xhr.onerror = function () {
-          reject({
-              status: this.status,
-              statusText: xhr.statusText
-          });
-      };
-      xhr.send();
-  });
+async function makeRequest(url) {
+  let response = await fetch(url);
+  let commits = await response.json();
+  return commits 
 }
 
 function findQuery(param) {
@@ -75,8 +51,7 @@ if(ageButton) {
 }
 
 async function populatePostsWithPrograms(url){
-  let result = await startRequestAPI(url)
-  result = JSON.parse(result);
+  let result = await makeRequest(url)
   for(let i = 0; i < result.programs.length; i++){
     createPostProgram(result.programs[i]);
   }
@@ -109,8 +84,7 @@ if(bodyEpisodes){
 async function populatePostsWithEpisodes(){
   let id = JSON.parse(findQuery("id"));
   let url = `http://api.sr.se/api/v2/episodes/index?programid=${id}&audioquality=hi&pagination=false&format=json`;
-  let result = await startRequestAPI(url)
-  result = JSON.parse(result);
+  let result = await makeRequest(url)
   if(!result.episodes[0]) {
     alert("There are no episodes")
   }else if(result.episodes[0].listenpodfile) {
