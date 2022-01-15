@@ -28,7 +28,7 @@ function setMainTitle(title, htmlId){
 
 //Loading the programes for age 3-8 when starting the program-page
 if(bodyPrograms){
-populatePostsWithPrograms("http://api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
+populatePostsWithPrograms("//api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
 }
 
 // Change the programes for the range 3-8 or 9-13 on display and the buttoncolor and -text
@@ -36,13 +36,13 @@ if(ageButton) {
   ageButton.onclick = function(event) {
     if(parseInt(event.target.getAttribute("data-lowestAge")) === 3){
       wrapperPrograms.innerHTML = "";
-      populatePostsWithPrograms("http://api.sr.se/api/v2/programs/index?programcategoryid=132&pagination=false&format=json")
+      populatePostsWithPrograms("//api.sr.se/api/v2/programs/index?programcategoryid=132&pagination=false&format=json")
       ageButton.innerHTML = "Display the programes for age 3-8"; 
       ageButton.setAttribute("data-lowestAge", "9");
       ageButton.style.background = "#bf10e2";
     }else {
       wrapperPrograms.innerHTML = "";
-      populatePostsWithPrograms("http://api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
+      populatePostsWithPrograms("//api.sr.se/api/v2/programs/index?programcategoryid=2&pagination=false&format=json")
       ageButton.innerHTML = "Display the programes for age 9-13"; 
       ageButton.setAttribute("data-lowestAge", "3")
       ageButton.style.background = "#1b9bbb";
@@ -83,7 +83,7 @@ if(bodyEpisodes){
 // Depending if there are episodes and if pods or broadcasts, the different functions are called to show episodes on the page
 async function populatePostsWithEpisodes(){
   let id = JSON.parse(findQuery("id"));
-  let url = `http://api.sr.se/api/v2/episodes/index?programid=${id}&audioquality=hi&pagination=false&format=json`;
+  let url = `//api.sr.se/api/v2/episodes/index?programid=${id}&audioquality=hi&pagination=false&format=json`;
   let result = await makeRequest(url)
   if(!result.episodes[0]) {
     alert("There are no episodes")
@@ -192,6 +192,7 @@ function setListenButtons(){
 
 // When the button play or pause is clicked its playing or pausing the pod/broadcast
 function listenEpisode(event){
+  console.log(event)
   let episodeId = parseInt(event.target.getAttribute("data-id"));
   
   if(auditivSignal != document.getElementById(`myAudio${episodeId}`)){
