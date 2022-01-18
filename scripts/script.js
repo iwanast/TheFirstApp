@@ -174,12 +174,18 @@ function createBroadcastEpisodes(ondemandEpisodData){
 
 function declareAudioTypeFromFileEnding(audioFile){
   let audioFileType = audioFile.substr(audioFile.length - 3);
-  if(audioFileType === "mp3"){
-    audioFileType = "mpeg";
-  }else if(audioFileType === "oga"){
-    audioFileType = "ogg";
-  }else if(audioFileType === "m4a")
-    audioFileType = "mp4"
+  switch(audioFileType){
+    case "mp3":
+      audioFileType = "mpeg";
+      break;
+    case "oga": 
+      audioFileType = "ogg";
+      break;
+    case "m4a":
+      audioFileType = "mp4";
+      break;
+    default:  
+  }    
   return audioFileType;
 }
 
